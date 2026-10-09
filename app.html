@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tempeh math - the app</title>
+<style>
+  :root { --ink:#33301f; --bg:#f6f3ec; --card:#fff; --accent:#6e6a2a; --accent2:#848136; --soft:#e9e5c6; }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); padding:18px; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  .boundary { background:#fff6e0; border:2px solid #b98a1d; border-radius:12px; padding:14px 18px; font-size:14.5px; line-height:1.55; color:#5c4413; margin:0 auto 16px; max-width:1180px; }
+  .boundary strong { display:block; margin-bottom:4px; color:#7a5a10; }
+  .lede { text-align:center; color:#5f5b40; margin:6px 0 16px; font-size:15px; max-width:760px; margin-left:auto; margin-right:auto; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px; }
+  .card { background:var(--card); border-radius:14px; padding:22px; box-shadow:0 1px 3px rgba(80,75,20,.08); }
+  h2 { font-size:19px; margin-bottom:14px; }
+  label { display:block; font-size:13px; color:#6f6a4a; margin:10px 0 4px; }
+  input { width:100%; padding:9px 10px; border:1px solid #d2cca4; border-radius:8px; font-size:15px; background:#fdfcf6; }
+  button { width:100%; margin-top:16px; padding:12px; border:0; border-radius:9px; background:var(--accent); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
+  button:hover { background:var(--accent2); }
+  .big { font-size:34px; font-weight:700; margin:14px 0 2px; }
+  .cap { font-size:13px; color:#6f6a4a; }
+  .pill { display:inline-block; margin-top:10px; padding:5px 12px; border-radius:20px; font-size:13px; font-weight:600; }
+  .pill.bean { background:var(--soft); color:var(--accent); }
+  table { width:100%; margin-top:12px; border-collapse:collapse; font-size:14px; }
+  td { padding:7px 0; border-bottom:1px solid #e0dab8; }
+  td:last-child { text-align:right; font-weight:600; }
+  .err { color:#a3341f; font-size:14px; margin-top:10px; }
+  .foot { margin-top:20px; font-size:12.5px; color:#7c7758; line-height:1.6; }
+  .foot a { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="boundary">
+    <strong>Read this first</strong>
+    This page does ratio arithmetic on labeled craft norms. It cannot tell you whether a ferment is safe to eat. Time, temperature and cleanliness decide that - follow a tested recipe and its safety guidance, and when a batch looks, smells or feels wrong, throw it out.
+  </div>
+  <p class="lede">Every tempeh quantity scales from one number: the dry weight of the beans. Weigh them dry and the soak, the starter and the clock are arithmetic.</p>
+  <div class="cards">
+    <div class="card">
+      <h2>Soak the beans</h2>
+      <label for="k_g">Dry soybeans (g)</label>
+      <input id="k_g" type="number" value="500" min="0" step="25">
+      <button id="k_go">Size the soak</button>
+      <div class="big" id="k_out">-</div>
+      <div class="cap">soak water (mL)</div>
+      <table id="k_rows" style="display:none">
+        <tr><td>cooked weight (labeled x2.2)</td><td id="k_cooked">-</td></tr>
+        <tr><td>vinegar for the pot (labeled)</td><td id="k_vinegar">-</td></tr>
+      </table>
+      <div class="pill bean" id="k_verdict" style="display:none"></div>
+      <div class="err" id="k_err"></div>
+    </div>
+    <div class="card">
+      <h2>Dose the starter</h2>
+      <label for="s_g">Dry soybeans (g)</label>
+      <input id="s_g" type="number" value="500" min="0" step="25">
+      <label for="s_r">Starter rate (g per kg - 2 is a labeled norm)</label>
+      <input id="s_r" type="number" value="2" min="0" step="0.1">
+      <button id="s_go">Weigh the starter</button>
+      <div class="big" id="s_out">-</div>
+      <div class="cap">tempeh starter (g)</div>
+      <div class="pill bean" id="s_verdict" style="display:none"></div>
+      <div class="err" id="s_err"></div>
+    </div>
+    <div class="card">
+      <h2>Time the incubation</h2>
+      <label for="i_t">Incubation temperature (C - the labeled band is 24-34)</label>
+      <input id="i_t" type="number" value="30" min="24" step="0.5">
+      <button id="i_go">Set the clock</button>
+      <div class="big" id="i_out">-</div>
+      <div class="cap">expected window (hours, labeled estimate)</div>
+      <div class="pill bean" id="i_verdict" style="display:none"></div>
+      <div class="err" id="i_err"></div>
+    </div>
+  </div>
+  <p class="foot">Exact arithmetic on labeled craft norms: 3x soak, x2.2 cooked yield, 15 mL vinegar per kg, 2 g starter per kg, 30 hours at 30C inverse-scaled. Bean variety, starter vitality and your actual incubator change the result - this measures nothing about your batch. <a href="index.html">Why this exists</a></p>
+</div>
+<script src="engine.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const g = id => parseFloat($(id).value);
+document.getElementById('k_go').onclick = () => {
+  $('k_err').textContent = '';
+  try {
+    const r = Tempehmath.soak(g('k_g'));
+    $('k_out').textContent = r.soakWaterMl + ' mL';
+    $('k_cooked').textContent = r.cookedG + ' g';
+    $('k_vinegar').textContent = r.vinegarMl + ' mL';
+    $('k_rows').style.display = 'table';
+    const v = $('k_verdict'); v.textContent = r.verdict; v.style.display = 'inline-block';
+  } catch (e) { $('k_err').textContent = e.message; }
+};
+document.getElementById('s_go').onclick = () => {
+  $('s_err').textContent = '';
+  try {
+    const r = Tempehmath.starter(g('s_g'), g('s_r'));
+    $('s_out').textContent = r.starterG + ' g';
+    const v = $('s_verdict'); v.textContent = r.verdict; v.style.display = 'inline-block';
+  } catch (e) { $('s_err').textContent = e.message; }
+};
+document.getElementById('i_go').onclick = () => {
+  $('i_err').textContent = '';
+  try {
+    const r = Tempehmath.incubate(g('i_t'));
+    $('i_out').textContent = r.hours + ' h';
+    const v = $('i_verdict'); v.textContent = r.verdict; v.style.display = 'inline-block';
+  } catch (e) { $('i_err').textContent = e.message; }
+};
+</script>
+</body>
+</html>
